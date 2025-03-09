@@ -10,11 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -88,32 +91,78 @@ public class EmployeeController {
 
     // ✅ Upload Profile Picture
     @PostMapping("/{id}/upload-profile")
-    public ResponseEntity<?> uploadProfilePicture(@PathVariable int id, @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadProfilePicture(
+            @PathVariable int id,
+            @RequestParam("file") MultipartFile file) {
         try {
-            String filename = "employee_" + id + "_" + file.getOriginalFilename();
-            storageService.store(file); // Save file
+            if (file.isEmpty()) {
+                logger.error("File is empty for employee ID: " + id);
+                return ResponseEntity.badRequest().body("File is empty!");
+            }
 
-            String fileUrl = "/api/employee/profile/" + filename;
+            // 🔹 Ensure filename is prefixed with employee ID
+            String filename = "employee_" + id + "_" + file.getOriginalFilename();
+
+            logger.info("Saving file: " + filename);
+
+            // 🔹 Store the file inside `upload-dir`
+            storageService.store(file);
+
+            // 🔹 Construct the file path for retrieval
+            String fileUrl = "/upload-dir/" + filename;
+
+            logger.info("File saved. Updating employee record in database.");
+
+            // 🔹 Update employee profile picture in DB
             employeeService.updateProfilePicture(id, fileUrl);
 
-            return ResponseEntity.created(URI.create(fileUrl)).body("Profile picture uploaded successfully!");
+            return ResponseEntity.ok("Profile picture uploaded successfully!");
+
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload profile picture.");
+            logger.error("Error uploading profile picture for employee ID " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload profile picture. Error: " + e.getMessage());
         }
     }
 
-    // ✅ Retrieve Profile Picture
+
     @GetMapping("/profile/{filename:.+}")
     public ResponseEntity<Resource> getProfilePicture(@PathVariable String filename) {
+        System.out.println("🔍 DEBUG: Received request for " + filename); // 🔹 Force log output
+
         try {
+            System.out.println("🔍 DEBUG: Calling storageService.loadAsResource()...");
             Resource file = storageService.loadAsResource(filename);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .body(file);
+
+            Path filePath = Paths.get("upload-dir").resolve(filename).normalize();
+            System.out.println("📂 Looking for file: " + filePath.toAbsolutePath());
+
+            if (file.exists() || file.isReadable()) {
+                String contentType = determineContentType(filename);
+                System.out.println("✅ DEBUG: File found, returning with content type " + contentType);
+
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .body(file);
+            } else {
+                System.out.println("❌ DEBUG: File not found at " + filePath.toAbsolutePath());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
         } catch (Exception e) {
+            System.out.println("❌ DEBUG: Exception occurred: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
     }
+
+    // ✅ Detect MIME type dynamically
+    private String determineContentType(String filename) {
+        if (filename.endsWith(".png")) return "image/png";
+        if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
+        if (filename.endsWith(".webp")) return "image/webp";
+        return "application/octet-stream"; // Default unknown type
+    }
+
 
     // ✅ Update Employee Status (Active, On Leave, Resigned)
     @PostMapping("/{id}/status")

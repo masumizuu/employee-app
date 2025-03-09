@@ -28,6 +28,9 @@ spring:
     multipart:
       enabled: true
       location: upload
+  web:
+    resources:
+      static-locations: file:./upload-dir/
 file:
   upload:
     location: ..\\upload-dir
