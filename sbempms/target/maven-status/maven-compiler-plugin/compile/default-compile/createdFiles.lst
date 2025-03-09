@@ -1,0 +1,10 @@
+com\gabriel\empms\controller\FileController.class
+com\gabriel\empms\controller\EmployeeController.class
+com\gabriel\empms\controller\storage\StorageProperties.class
+com\gabriel\empms\controller\storage\StorageService.class
+com\gabriel\empms\serviceimpl\EmployeeServiceImpl.class
+com\gabriel\empms\controller\storage\StorageFileNotFoundException.class
+com\gabriel\empms\controller\storage\StorageException.class
+com\gabriel\empms\EmployeeMSApplication.class
+META-INF\spring-configuration-metadata.json
+com\gabriel\empms\controller\storage\FileSystemStorageService.class

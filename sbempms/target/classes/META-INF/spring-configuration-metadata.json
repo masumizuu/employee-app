@@ -1,0 +1,18 @@
+{
+  "groups": [
+    {
+      "name": "file.upload",
+      "type": "com.gabriel.empms.controller.storage.StorageProperties",
+      "sourceType": "com.gabriel.empms.controller.storage.StorageProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "file.upload.location",
+      "type": "java.lang.String",
+      "description": "Folder location for storing files",
+      "sourceType": "com.gabriel.empms.controller.storage.StorageProperties"
+    }
+  ],
+  "hints": []
+}
